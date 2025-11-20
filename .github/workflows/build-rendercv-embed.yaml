@@ -1,0 +1,46 @@
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04-arm]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Check-out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install "rendercv[full]"
+          pip install nuitka
+
+      - name: Build rendercv artifact
+        run: |
+          nuitka --mode=standalone main.py \
+            --include-package=rendercv \
+            --include-package-data='rendercv_fonts:**' \
+            --include-package-data='rendercv:themes/**'
+
+          mv *.dist rendercv.nuitka
+
+      - name: Create tar
+        run: |
+          tar -cJhvf rendercv.nuitka.tar.xz rendercv.nuitka
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }} Build
+          path: |
+            rendercv.nuitka.tar.*
+          include-hidden-files: true
